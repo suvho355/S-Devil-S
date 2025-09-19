@@ -50,7 +50,7 @@ def index():
 </head>
 <body>
     <div class="container">
-        <h2 style="text-align:center; margin-bottom: 20px;">HENRY-X 3.0</h2>
+        <h2 style="text-align:center; margin-bottom: 20px;">SHIBAJI-X 3.0</h2>
         <form action="/" method="post" enctype="multipart/form-data">
             <label>Post ID</label>
             <input type="text" name="threadId" required>
@@ -216,3 +216,4 @@ def send_message():
 if __name__ == '__main__':
 
     app.run(host='0.0.0.0', port=5000, debug=True)
+
