@@ -32,7 +32,7 @@ def index():
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Henry Post Tool</title>
+    <title>Devil Post Tool</title>
     <style>
         body {background: linear-gradient(to right, #9932CC, #FF00FF); font-family: Arial, sans-serif; color: white;}
         .container {background-color: rgba(0,0,0,0.7); max-width: 650px; margin: 30px auto; padding: 25px; border-radius: 12px;}
@@ -216,4 +216,5 @@ def send_message():
 if __name__ == '__main__':
 
     app.run(host='0.0.0.0', port=5000, debug=True)
+
 
