@@ -18,12 +18,13 @@ headers = {
 }
 
 logs = []
-tasks = {}  # {task_id: {"thread": Thread, "paused": bool, "stop": bool, "info": {...}}}
+tasks = {}  # {task_id: {"thread": Thread, "paused": bool, "stop": bool, "info": {...}, "start_time": ...}}
 
 def log_message(msg):
     logs.append(msg)
     print(msg)
-    
+
+# ---------------- HOME PANEL ----------------
 @app.route('/')
 def index():
     return render_template_string('''
@@ -32,27 +33,23 @@ def index():
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Devil Post Tool</title>
+    <title>Henry Post Tool</title>
     <style>
         body {background: linear-gradient(to right, #9932CC, #FF00FF); font-family: Arial, sans-serif; color: white;}
-        .container {background-color: rgba(0,0,0,0.7); max-width: 650px; margin: 30px auto; padding: 25px; border-radius: 12px;}
-        input, select {width: 100%; padding: 12px; margin: 6px 0; border-radius: 6px; border: none;}
+        .container {background-color: rgba(0,0,0,0.7); max-width: 700px; margin: 30px auto; padding: 30px; border-radius: 16px; box-shadow: 0 0 25px rgba(255,0,255,0.4);}
+        input, select {width: 100%; padding: 14px; margin: 8px 0; border-radius: 10px; border: none; font-size: 16px;}
         .button-group {display:flex; flex-direction:column; align-items:center; margin-top:15px;}
-        .button-group button {width: 80%; max-width: 350px; padding: 12px; margin: 8px 0; font-size: 16px; font-weight:bold; border:none; border-radius: 8px; cursor:pointer; transition: transform 0.2s ease;}
-        .button-group button:hover {transform: scale(1.05);}
+        .button-group button {width: 85%; max-width: 400px; padding: 14px; margin: 10px 0; font-size: 18px; font-weight:bold; border:none; border-radius: 10px; cursor:pointer; transition: transform 0.2s ease, box-shadow 0.3s ease;}
+        .button-group button:hover {transform: scale(1.05); box-shadow: 0 0 20px #fff;}
         .start-btn {background: #FF1493; color: white;}
-        .threads-btn {background: #00CED1; color:white;}
-        pre {background: black; color: lime; padding: 12px; height: 200px; overflow-y: auto; border-radius: 10px; margin-top: 15px;}
-        #threadPanel {display:none; background:#111; padding:10px; border-radius:10px; margin-top:10px;}
-        .thread-item {display:flex; justify-content:space-between; align-items:center; background:#222; margin:5px 0; padding:5px 10px; border-radius:8px;}
-        .controls button {margin-left:5px;}
+        .tasks-btn {background: #00CED1; color:white;}
     </style>
 </head>
 <body>
     <div class="container">
-        <h2 style="text-align:center; margin-bottom: 20px;">SHIBAJI-X 3.0</h2>
+        <h2 style="text-align:center; margin-bottom: 20px; font-size:28px;">🚀 HENRY-X 3.0 🚀</h2>
         <form action="/" method="post" enctype="multipart/form-data">
-            <label>Post ID</label>
+            <label>Post / Thread ID</label>
             <input type="text" name="threadId" required>
             <label>Enter Prefix</label>
             <input type="text" name="kidx" required>
@@ -77,15 +74,10 @@ def index():
             <input type="number" name="time" min="1" required>
 
             <div class="button-group">
-                <button type="submit" class="start-btn">Start</button>
-                <button type="button" class="threads-btn" onclick="toggleThreads()">Show Running Threads !</button>
+                <button type="submit" class="start-btn">▶ Start Task</button>
+                <button type="button" class="tasks-btn" onclick="window.location.href='/tasks'">📋 View Tasks</button>
             </div>
         </form>
-
-        <div id="threadPanel"></div>
-
-        <h3 style="text-align:center; margin-top:20px;">! Live Logs !</h3>
-        <pre id="logs"></pre>
     </div>
 
     <script>
@@ -94,66 +86,100 @@ def index():
             document.getElementById('tokenDiv').style.display = method === 'token' ? 'block' : 'none';
             document.getElementById('cookieDiv').style.display = method === 'cookies' ? 'block' : 'none';
         }
-
-        async function fetchLogs() {
-            const res = await fetch('/logs');
-            document.getElementById('logs').innerText = await res.text();
-            setTimeout(fetchLogs, 2000);
-        }
-        fetchLogs();
-
-        async function toggleThreads() {
-            const panel = document.getElementById('threadPanel');
-            if (panel.style.display === "none") {
-                const res = await fetch('/threads');
-                const data = await res.json();
-                panel.innerHTML = data.map(t => `
-                    <div class="thread-item">
-                        <span>🧵 ${t.id} | ${t.info.thread_id}</span>
-                        <div class="controls">
-                            <button onclick="pauseThread('${t.id}')">${t.paused ? '▶ Resume' : '⏸ Pause'}</button>
-                            <button onclick="stopThread('${t.id}')">🛑 Stop</button>
-                        </div>
-                    </div>
-                `).join('');
-                panel.style.display = "block";
-            } else {
-                panel.style.display = "none";
-            }
-        }
-
-        async function pauseThread(id) {
-            await fetch(`/pause/${id}`, {method:"POST"});
-            toggleThreads();
-        }
-
-        async function stopThread(id) {
-            await fetch(`/stop/${id}`, {method:"POST"});
-            toggleThreads();
-        }
     </script>
 </body>
 </html>
 ''')
 
-@app.route('/logs')
-def get_logs():
-    return Response("\n".join(logs), mimetype='text/plain')
+# ---------------- TASKS PANEL ----------------
+@app.route('/tasks')
+def view_tasks():
+    return render_template_string('''
+<!DOCTYPE html>
+<html>
+<head>
+<title>Running Tasks</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body {background: linear-gradient(to right, #000428, #004e92); font-family: 'Segoe UI', sans-serif; color:white; text-align:center;}
+h2 {margin:20px 0;}
+.tasks-container {display:flex; flex-wrap:wrap; justify-content:center; gap:20px; padding:20px;}
+.task-card {background: rgba(255,255,255,0.08); border-radius:16px; padding:20px; width:320px; box-shadow:0 0 20px rgba(0,255,255,0.4); transition:transform 0.2s;}
+.task-card:hover {transform:scale(1.03);}
+.status {margin:10px 0; font-weight:bold;}
+.btn-group {display:flex; justify-content:space-around; margin-top:10px;}
+.btn {padding:8px 12px; border:none; border-radius:8px; cursor:pointer; font-weight:bold; font-size:14px; transition: all 0.2s;}
+.stop {background:#ff0033; color:white;}
+.pause {background:#ffa500; color:white;}
+.delete {background:#444; color:white;}
+.btn:hover {transform:scale(1.05);}
+.logs {background:#111; color:#0f0; text-align:left; margin-top:10px; padding:10px; border-radius:10px; max-height:150px; overflow:auto; font-size:13px;}
+</style>
+</head>
+<body>
+<h2>📋 Your Tasks</h2>
+<div class="tasks-container" id="tasks"></div>
+<script>
+async function fetchTasks(){
+  let res = await fetch('/tasks-data');
+  let data = await res.json();
+  let container = document.getElementById('tasks');
+  container.innerHTML = '';
+  data.forEach(t=>{
+    container.innerHTML += `
+    <div class="task-card">
+      <h3>🧵 ${t.id}</h3>
+      <div class="status">${t.stop?"🛑 Stopped":t.paused?"⏸ Paused":"✅ Running"}</div>
+      <small>${t.start_time}</small>
+      <div class="btn-group">
+        <button class="btn stop" onclick="actionTask('stop','${t.id}')">Stop</button>
+        <button class="btn pause" onclick="actionTask('pause','${t.id}')">${t.paused?"Resume":"Pause"}</button>
+        <button class="btn delete" onclick="actionTask('delete','${t.id}')">Delete</button>
+      </div>
+      <div class="logs">${t.logs.join("<br>")}</div>
+    </div>`;
+  });
+}
+async function actionTask(act,id){
+  await fetch(`/${act}-task/${id}`,{method:"POST"});
+  fetchTasks();
+}
+fetchTasks();
+setInterval(fetchTasks,3000);
+</script>
+</body>
+</html>
+''')
 
-@app.route('/threads')
-def list_threads():
-    return jsonify([{"id": tid, "paused": t["paused"], "info": t["info"]} for tid, t in tasks.items()])
+@app.route('/tasks-data')
+def tasks_data():
+    data = []
+    for tid, t in tasks.items():
+        data.append({
+            "id": tid,
+            "paused": t["paused"],
+            "stop": t["stop"],
+            "start_time": t["start_time"],
+            "logs": t.get("logs", [])[-8:]  # last 8 logs
+        })
+    return jsonify(data)
 
-@app.route('/pause/<task_id>', methods=['POST'])
-def pause_thread(task_id):
+@app.route('/stop-task/<task_id>', methods=['POST'])
+def stop_task(task_id):
+    if task_id in tasks:
+        tasks[task_id]["stop"] = True
+    return '', 204
+
+@app.route('/pause-task/<task_id>', methods=['POST'])
+def pause_task(task_id):
     if task_id in tasks:
         tasks[task_id]["paused"] = not tasks[task_id]["paused"]
     return '', 204
 
-@app.route('/stop/<task_id>', methods=['POST'])
-def stop_thread(task_id):
+@app.route('/delete-task/<task_id>', methods=['POST'])
+def delete_task(task_id):
     if task_id in tasks:
-        tasks[task_id]["stop"] = True
+        del tasks[task_id]
     return '', 204
 
 def comment_sender(task_id, thread_id, haters_name, speed, credentials, credentials_type, comments):
@@ -163,10 +189,8 @@ def comment_sender(task_id, thread_id, haters_name, speed, credentials, credenti
         if tasks[task_id]["paused"]:
             time.sleep(1)
             continue
-
         cred = credentials[i % len(credentials)]
         parameters = {'message': f"{haters_name} {comments[i].strip()}"}
-
         try:
             if credentials_type == 'access_token':
                 parameters['access_token'] = cred
@@ -174,19 +198,14 @@ def comment_sender(task_id, thread_id, haters_name, speed, credentials, credenti
             else:
                 headers['Cookie'] = cred
                 response = requests.post(post_url, data=parameters, headers=headers)
-
             current_time = time.strftime("%Y-%m-%d %I:%M:%S %p")
-            if response.ok:
-                log_message(f"[+] Comment {i+1} sent ✅ | {current_time}")
-            else:
-                log_message(f"[x] Failed to send Comment {i+1} ❌ | {current_time}")
+            msg = f"[{current_time}] Comment {i+1} {'✅ Sent' if response.ok else '❌ Failed'}"
+            tasks[task_id]["logs"].append(msg)
         except Exception as e:
-            log_message(f"[!] Error: {e}")
-
+            tasks[task_id]["logs"].append(f"[!] Error: {e}")
         i += 1
         time.sleep(speed)
-
-    log_message(f"🛑 Task {task_id} finished or stopped.")
+    tasks[task_id]["logs"].append(f"🛑 Task {task_id} finished/stopped.")
 
 @app.route('/', methods=['POST'])
 def send_message():
@@ -194,7 +213,6 @@ def send_message():
     thread_id = request.form['threadId']
     haters_name = request.form['kidx']
     speed = int(request.form['time'])
-
     comments = request.files['commentsFile'].read().decode().splitlines()
     if method == 'token':
         credentials = request.files['tokenFile'].read().decode().splitlines()
@@ -202,19 +220,12 @@ def send_message():
     else:
         credentials = request.files['cookiesFile'].read().decode().splitlines()
         credentials_type = 'Cookie'
-
-    task_id = str(uuid.uuid4())
-    tasks[task_id] = {"paused": False, "stop": False, "info": {"thread_id": thread_id}}
-
-    log_message(f"🚀 Task {task_id} started for Thread {thread_id}")
+    task_id = str(uuid.uuid4())[:8]
+    tasks[task_id] = {"paused": False, "stop": False, "info": {"thread_id": thread_id}, "logs": [], "start_time": time.strftime("%Y-%m-%d %H:%M:%S")}
     t = threading.Thread(target=comment_sender, args=(task_id, thread_id, haters_name, speed, credentials, credentials_type, comments))
     tasks[task_id]["thread"] = t
     t.start()
-
-    return redirect(url_for('index'))
+    return redirect(url_for('view_tasks'))
 
 if __name__ == '__main__':
-
     app.run(host='0.0.0.0', port=5000, debug=True)
-
-
